@@ -1,0 +1,37 @@
+{{- if .Values.restore_job.enabled }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: restore
+spec:
+  template:
+    spec:
+      affinity: 
+        {{ .Values.restore_job.affinity | toYaml | nindent 8 }}
+      serviceAccountName: sa-postgres-restore
+      containers:
+          - name: postgres-restore
+            image: amanravi12/postgres-restore:v2
+            imagePullPolicy: Always
+            env:
+            - name: POSTGRES_HOST
+              value: postgres-postgresql-primary-0.{{ .Release.Name }}-postgresql-primary.{{ .Release.Namespace }}.svc.cluster.local
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-postgresql
+                  key: postgres-password
+            - name: S3_BUCKET
+              value: {{ .Values.restore_job.bucket_uri }}
+            - name: AWS_DEFAULT_REGION
+              value: {{ .Values.restore_job.aws_default_region }}
+            resources: 
+              {{ .Values.restore_job.resources | toYaml | nindent 14 }}
+      restartPolicy: Never
+  backoffLimit: 4
+{{- end }}
